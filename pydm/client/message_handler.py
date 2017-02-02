@@ -30,9 +30,12 @@ class ServerConnection(QLocalSocket):
   
   @pyqtSlot()
   def disconnect(self):
-    print("Disconnecting")
+    print("Disconnecting.")
     self.disconnectFromServer()
-    self.waitForDisconnected()
+    if not self.waitForDisconnected(5000):
+      print("Timed out while waiting for disconnect.")
+    print("Disconnected.")
+    self.thread().quit()
     
   @pyqtSlot()
   def socket_connected(self):
@@ -69,9 +72,13 @@ class ServerConnection(QLocalSocket):
       print("CLIENT ERROR: Socket operation not supported by operating system.")
     elif err == QLocalSocket.UnknownSocketError:
       print("CLIENT ERROR: An unknown socket error occured.")
+    self.thread().quit()
   
   @pyqtSlot()
   def read_from_socket(self):
+    if self.state() != QLocalSocket.ConnectedState:
+      return
+      
     if self.inc_message_size == 0:
       self.inc_message_size = self.stream.readInt32()
       self.buffer.reserve(self.inc_message_size)
@@ -211,6 +218,8 @@ class ServerConnection(QLocalSocket):
     if address is None:
       return
     address = str(address)
+    if address not in self.data_for_channel:
+      return
     cd = self.data_for_channel[address]
     with QWriteLocker(self.lock):
       cd.listeners -= 1
