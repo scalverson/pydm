@@ -202,13 +202,13 @@ class PyDMApplication(QApplication):
     for child_widget in widgets:
       if hasattr(child_widget, 'channels'):
         for channel in child_widget.channels():
-          self.connect_to_data_channel(channel)
           if channel.address not in self.data_emitters:
+            self.connect_to_data_channel(channel)
             emitter = DataEmitter(channel.address)
+            emitter.put_value_signal.connect(self.server_connection.send_msg)
             self.data_emitters[channel.address] = emitter
           else:
             emitter = self.data_emitters[channel.address]
-          emitter.put_value_signal.connect(self.server_connection.send_msg)
           emitter.add_listener(channel)
         #Take this opportunity to install a filter that intercepts middle-mouse clicks, which we use to display a tooltip with the address of the widget's first channel.
         child_widget.installEventFilter(self)
