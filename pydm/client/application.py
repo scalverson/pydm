@@ -245,7 +245,6 @@ class PyDMApplication(QApplication):
   def update_widgets(self):
     for child_widget in self.pydm_widgets:
       for channel in child_widget.channels():
-        #It may be dangerous to do this without a lock, however, I have never seen any problems due to that.
         cd = self.server_connection.data_for_channel[str(channel.address)]
         if cd.needs_update:
           with QReadLocker(self.lock):
@@ -263,6 +262,7 @@ class PyDMApplication(QApplication):
               channel.enum_strings_slot(cd.enum_strings)
             if channel.prec_slot and cd.precision is not None:
               channel.prec_slot(cd.precision)
-          with QWriteLocker(self.lock):
-            cd.needs_update = False
+    for address, cd  in self.server_connection.data_for_channel.items():
+      with QWriteLocker(self.lock):
+        cd.needs_update = False
           
