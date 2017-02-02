@@ -95,7 +95,7 @@ class PyDMApplication(QApplication):
   def exit(self, return_code=0):
     print("Application quitting")
     self.disconnect_from_server.emit()
-    self.network_thread.wait()
+    self.network_thread.wait(10000)
     super(PyDMApplication, self).exit(return_code)
 
   @pyqtSlot()
@@ -132,7 +132,8 @@ class PyDMApplication(QApplication):
     del self.windows[window]
     if len(self.windows) < 1:
       self.disconnect_from_server.emit()
-      self.network_thread.quit()
+      #When the server connection gets the disconnect signal, it will disconnect, then call 'quit' on the network thread.
+      #We need to wait until the network thread quits before we can quit the GUI thread.
       self.network_thread.wait()
       self.quit()
 
