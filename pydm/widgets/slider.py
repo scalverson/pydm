@@ -55,7 +55,8 @@ class PyDMSlider(QFrame):
     self.vertical_layout.addWidget(self._slider)
     #Internal values for properties
     self._connected = False
-    self._write_access = True
+    self._write_access = False
+    self.set_enable_state()
     self._channels = None
     self._channel = ""
     self._value = 0.0
