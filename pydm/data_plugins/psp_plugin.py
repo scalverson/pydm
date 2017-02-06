@@ -3,6 +3,7 @@ Plugin to handle EPICS connections using pyca through psp.Pv.
 This is used instead of pyepics for better performance.
 """
 import numpy as np
+import pyca
 from psp.Pv import Pv
 from ..PyQt.QtCore import pyqtSlot, pyqtSignal, Qt, QTimer
 from .plugin import PyDMPlugin, PyDMConnection
@@ -20,7 +21,7 @@ type_map = dict(
     DBF_ULONG = int,
     DBF_FLOAT = float,
     DBF_DOUBLE = float,
-    DBF_ENUM = str,
+    DBF_ENUM = int,
     DBF_MENU = None,
     DBF_DEVICE = None,
     DBF_INLINK = None,
@@ -155,9 +156,11 @@ class Connection(PyDMConnection):
         self.send_connection_state(isconnected)
         if isconnected:
             self.epics_type = self.pv.type()
-            if self.epics_type == "DBF_ENUM":
-                self.pv.set_string_enum(True)
             self.count = self.pv.count or 1
+            if self.epics_type == "DBF_ENUM":
+                self.pv.get_data(True, -1.0, self.count)
+                pyca.flush_io()
+                self.pv.get_enum_strings(-1.0)
             if not self.pv.ismonitored:
                 self.pv.monitor()
             self.python_type = type_map.get(self.epics_type)
@@ -220,6 +223,12 @@ class Connection(PyDMConnection):
                 self.rwacc = rwacc
                 self.data_message_signal.emit(self.write_access_message(rwacc==3, self.timestamp()))
         
+        if self.enums is None:
+            try:
+                self.update_enums()
+            except KeyError:
+                self.pv.get_enum_strings(-1.0)
+        
         sevr = self.pv.severity
         if sevr != self.sevr:
           self.sevr = sevr
@@ -246,7 +255,7 @@ class Connection(PyDMConnection):
         """
         if self.epics_type == "DBF_ENUM":
             if self.enums is None:
-                self.enums = tuple(b.decode(encoding='ascii') for b in self.pv.get_enum_set())
+                self.enums = tuple(b.decode(encoding='ascii') for b in self.pv.data["enum_set"])
             self.data_message_signal.emit(self.enum_strings_message(self.enums, self.timestamp()))
 
     @pyqtSlot(int)
