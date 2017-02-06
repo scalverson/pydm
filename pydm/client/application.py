@@ -12,7 +12,7 @@ import subprocess
 import re
 import numpy as np
 from ..PyQt.QtCore import Qt, QObject, QTimer, QThread, QEvent, QReadLocker, QWriteLocker, pyqtSlot, pyqtSignal
-from ..PyQt.QtGui import QApplication, QColor, QWidget, QToolTip
+from ..PyQt.QtGui import QApplication, QColor, QWidget, QToolTip, QClipboard
 from ..PyQt import uic
 from .main_window import PyDMMainWindow
 from .message_handler import ServerConnection
