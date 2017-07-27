@@ -23,6 +23,8 @@ pvdb = {
         'NoiseAmplitude'   : { 'prec' : 3, 'value' : 0.2   },
         'Waveform'         : { 'count': MAX_POINTS,
                                 'prec' : 5 },
+        'Cosine'         : { 'count': MAX_POINTS,
+                                'prec' : 5 },
         'TimeBase'         : { 'count': MAX_POINTS,
                                'prec' : 5,
                                'value': numpy.arange(MAX_POINTS, dtype=float) 
@@ -36,7 +38,8 @@ pvdb = {
         'TwoSpotImage'     : { 'type' : 'char', 'count': IMAGE_SIZE**2, 'value': numpy.zeros(IMAGE_SIZE**2,dtype=numpy.uint8) },
         'ImageWidth'       : { 'type' : 'int', 'value' : IMAGE_SIZE },
         'String'           : { 'type' : 'string', 'value': "Test String"},
-        'Float'            : { 'type' : 'float', 'value': 0.0, 'lolim': -1.2, 'lolo': -1.0, 'low': -0.8, 'high': 0.8, 'hihi': 1.0, 'hilim': 1.2, 'units': 'mJ', 'prec': 3 }
+        'Float'            : { 'type' : 'float', 'value': 0.0, 'lolim': -1.2, 'lolo': -1.0, 'low': -0.8, 'high': 0.8, 'hihi': 1.0, 'hilim': 1.2, 'units': 'mJ', 'prec': 3 },
+        'StatusBits'       : { 'type' : 'int', 'value': 0b101010, 'lolim': 0, 'hilim': 32 }
 }
 
 def double_gaussian_2d(x, y, x0, y0, xsig, ysig):
@@ -92,7 +95,8 @@ class myDriver(Driver):
             timeStep  = timePerDivision * NUM_DIVISIONS / MAX_POINTS
             timeWave  = timeStart + numpy.arange(MAX_POINTS) * timeStep 
             noise  = noiseAmplitude * numpy.random.random(MAX_POINTS)
-            data = AMPLITUDE * numpy.sin(timeWave * FREQUENCY * 2 * numpy.pi) + noise 
+            data = AMPLITUDE * numpy.sin(timeWave * FREQUENCY * 2 * numpy.pi) + noise
+            cos_data = AMPLITUDE * numpy.cos(timeWave * FREQUENCY * 2 * numpy.pi) + noise
             # calculate statistics
             self.setParam('MinValue',  data.min())
             self.setParam('MaxValue',  data.max())
@@ -100,7 +104,9 @@ class myDriver(Driver):
             # scale/offset
             yScale = 1.0 / voltsPerDivision
             data   = NUM_DIVISIONS/2.0 + yScale * (data + voltOffset)
+            cos_data = NUM_DIVISIONS/2.0 + yScale * (cos_data + voltOffset)
             self.setParam('Waveform',  data)
+            self.setParam('Cosine', cos_data)
             #Generate the image data
             x0 = 0.5*(numpy.random.rand()-0.5) + self.getParam('XPos')
             y0 = 0.5*(numpy.random.rand()-0.5) - self.getParam('YPos')
