@@ -5,8 +5,8 @@ This is used instead of pyepics for better performance.
 import numpy as np
 import pyca
 from psp.Pv import Pv
-from ..PyQt.QtCore import pyqtSlot, pyqtSignal, Qt, QTimer
-from .plugin import PyDMPlugin, PyDMConnection
+from ...PyQt.QtCore import pyqtSlot, pyqtSignal, Qt, QTimer
+from ..plugin import PyDMPlugin, PyDMConnection
 
 import datetime
 
@@ -128,7 +128,6 @@ class Connection(PyDMConnection):
         :type parent:  QWidget
         """
         super(Connection,self).__init__(channel, pv, parent)
-
         self.python_type = None
         self.pv = setup_pv(pv, self.connected_cb, self.monitor_cb)
         self.enums = None
@@ -393,5 +392,8 @@ class PSPPlugin(PyDMPlugin):
     """
     Class to define our protocol and point to our :class:`Connection` Class
     """
-    protocol = "ca://"
+    #NOTE: protocol is intentionally "None" to keep this plugin from getting directly imported.
+    #If this plugin is chosen as the One True EPICS Plugin in epics_plugin.py, the protocol will
+    #be properly set before it is used.
+    protocol = None
     connection_class = Connection
