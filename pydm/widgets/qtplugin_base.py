@@ -1,9 +1,11 @@
-"""
-Module to define a parent qtdesigner plugin class.
+"""Module to define a parent qtdesigner plugin class.
 
 Please continue to name your qtdesigner plugin modules using the convention
 modulename.py          <--- defines the widget
 modulename_qtplugin.py <--- imports this module + the widget
+
+However, a majority of the builtin plugins are defined in qtplugins.py
+adjacent to this module.
 
 NOTE: PyDMDesignerPlugin is a valid plugin, so designer will try to pick it up
       and instantiate it if you import it into another module's namespace. You
@@ -14,28 +16,50 @@ If you do not heed this warning, you will get a one-line traceback:
 TypeError: __init__() takes exactly 3 arguments (1 given)
 for each PyDMDesignerPlugin that Qt Designer tries to use. This will not
 affect any of your widgets, but it will be annoying.
-"""
-from ..PyQt import QtGui, QtDesigner
 
-def qtplugin_factory(cls, is_container=False):
+"""
+from qtpy import QtGui, QtDesigner
+from .qtplugin_extensions import PyDMExtensionFactory
+from ..qtdesigner import DesignerHooks
+
+
+# TODO: Change to Enum once we drop support
+#       for the almost dead and agonizing Python 2.7
+#       <pitchforks> Death to Python 2.7! </ pitchforks>
+class WidgetCategory(object):
+    CONTAINER = "PyDM Container Widgets"
+    DISPLAY = "PyDM Display Widgets"
+    INPUT = "PyDM Input Widgets"
+    PLOT = "PyDM Plot Widgets"
+    DRAWING = "PyDM Drawing Widgets"
+
+
+def qtplugin_factory(cls, is_container=False, group='PyDM Widgets',
+                     extensions=None):
     """
     Helper function to create a generic PyDMDesignerPlugin class.
 
     :param cls: Widget class
     :type cls:  QWidget
     """
+
     class Plugin(PyDMDesignerPlugin):
         __doc__ = "PyDMDesigner Plugin for {}".format(cls.__name__)
+
         def __init__(self):
-            super(Plugin, self).__init__(cls, is_container)
+            super(Plugin, self).__init__(cls, is_container, group, extensions)
+
     return Plugin
+
 
 class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
     """
     Parent class to standardize how pydm plugins are accessed in qt designer.
     All functions have default returns that can be overriden as necessary.
     """
-    def __init__(self, cls, is_container=False):
+
+    def __init__(self, cls, is_container=False, group='PyDM Widgets',
+                 extensions=None):
         """
         Set up the plugin using the class info in cls
 
@@ -46,6 +70,9 @@ class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
         self.initialized = False
         self.is_container = is_container
         self.cls = cls
+        self._group = group
+        self.extensions = extensions
+        self.manager = None
 
     def initialize(self, core):
         """
@@ -58,6 +85,17 @@ class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
         """
         if self.initialized:
             return
+
+        designer_hooks = DesignerHooks()
+        designer_hooks.form_editor = core
+
+        if self.extensions is not None and len(self.extensions) > 0:
+            self.manager = core.extensionManager()
+            if self.manager:
+                factory = PyDMExtensionFactory(parent=self.manager)
+                self.manager.registerExtensions(
+                    factory,
+                    'org.qt-project.Qt.Designer.TaskMenu')  # Qt5
         self.initialized = True
 
     def isInitialized(self):
@@ -75,9 +113,10 @@ class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
         """
         w = self.cls(parent=parent)
         try:
-          w.init_for_designer()
+            setattr(w, "extensions", self.extensions)
+            w.init_for_designer()
         except (AttributeError, NameError):
-          pass
+            pass
         return w
 
     def name(self):
@@ -91,7 +130,7 @@ class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
         Return a common group name so all PyDM Widgets are together in
         Qt Designer.
         """
-        return "PyDM Widgets"
+        return self._group
 
     def toolTip(self):
         """
@@ -106,11 +145,6 @@ class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
         A longer description of the widget for Qt Designer. By default, this
         is the entire class docstring.
         """
-        try:
-            if isinstance(self.cls.__doc__, str):
-                return self.cls.__doc__
-        except AttributeError:
-            pass
         return ""
 
     def isContainer(self):
@@ -130,19 +164,15 @@ class PyDMDesignerPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
         XML Description of the widget's properties.
         """
         return (
-                "<widget class=\"{0}\" name=\"{0}\">\n"
-                " <property name=\"toolTip\" >\n"
-                "  <string>{1}</string>\n"
-                " </property>\n"
-                " <property name=\"whatsThis\" >\n"
-                "  <string>{2}</string>\n"
-                " </property>\n"
-                "</widget>\n"
-               ).format(self.name(), self.toolTip(), self.whatsThis())
+            "<widget class=\"{0}\" name=\"{0}\">\n"
+            " <property name=\"toolTip\" >\n"
+            "  <string>{1}</string>\n"
+            " </property>\n"
+            "</widget>\n"
+        ).format(self.name(), self.toolTip())
 
     def includeFile(self):
         """
         Include the class module for the generated qt code
         """
         return self.cls.__module__
-

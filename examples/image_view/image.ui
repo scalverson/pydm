@@ -22,11 +22,17 @@
      <property name="whatsThis">
       <string>Displays an image from a PV.</string>
      </property>
-     <property name="imageChannel">
-      <string>ca://CAMR:IN20:186:IMAGE</string>
+     <property name="colorMap" stdset="0">
+      <enum>PyDMImageView::Inferno</enum>
      </property>
-     <property name="widthChannel">
-      <string>ca://CAMR:IN20:186:N_OF_COL</string>
+     <property name="imageChannel" stdset="0">
+      <string>ca://MTEST:Image</string>
+     </property>
+     <property name="widthChannel" stdset="0">
+      <string>ca://MTEST:ImageWidth</string>
+     </property>
+     <property name="maxRedrawRate" stdset="0">
+      <number>30</number>
      </property>
     </widget>
    </item>
